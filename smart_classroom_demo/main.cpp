@@ -702,7 +702,8 @@ int main(int argc, char* argv[]) {
         if (!FLAGS_out_v.empty()) {
             //vid_writer = cv::VideoWriter(FLAGS_out_v, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), cap.GetFPS(), Visualizer::GetOutputSize(frame.size()));
             //vid_writer = cv::VideoWriter(FLAGS_out_v, cv::VideoWriter::fourcc('M', 'P', '4', 'V'), cap.GetFPS(), Visualizer::GetOutputSize(frame.size()));
-            vid_writer = cv::VideoWriter(FLAGS_out_v, 0x00000021, cap.GetFPS(), Visualizer::GetOutputSize(frame.size()));
+            //vid_writer = cv::VideoWriter(FLAGS_out_v, 0x00000021, cap.GetFPS(), Visualizer::GetOutputSize(frame.size()));
+            vid_writer = cv::VideoWriter(FLAGS_out_v, 0x31637661, cap.GetFPS(), Visualizer::GetOutputSize(frame.size()));            
             //vid_writer = cv::VideoWriter(FLAGS_out_v, cv::VideoWriter::fourcc('X', '2', '6', '4'), cap.GetFPS(), Visualizer::GetOutputSize(frame.size()));
         }
         Visualizer sc_visualizer(!FLAGS_no_show, vid_writer, num_top_persons);
