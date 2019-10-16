@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-build_dir=../../models
+build_dir=./models
 
-./interactive_face_detection_demo \
+../CPUInferFaceRun/intel64/Release/interactive_face_detection_demo \
 -i cam \
 \ #-i    /home/sun/Downloads/OpenVINO/NCCU/20190925_125231.mp4 \
 -m    $build_dir/FP32/face-detection-adas-0001.xml \
