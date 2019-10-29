@@ -19,13 +19,14 @@
 #include <set>
 #include <algorithm>
 #include <utility>
+#include <chrono>
 #include <ie_iextension.h>
 
+#include "cnn.hpp"
+#include "face_detect.hpp"
+#include "face_reid.hpp"
 #include "actions.hpp"
 #include "action_detector.hpp"
-#include "cnn.hpp"
-#include "detector.hpp"
-#include "face_reid.hpp"
 #include "tracker.hpp"
 #include "image_grabber.hpp"
 #include "logger.hpp"
@@ -717,7 +718,9 @@ int main(int argc, char* argv[]) {
             std::cout << " or switch to the output window and press ESC key";
         }
         std::cout << std::endl;
-
+        
+        auto start_t = std::chrono::steady_clock::now();
+        auto end_t = std::chrono::steady_clock::now();
         while (!is_last_frame) {
             logger.CreateNextFrameRecord(cap.GetVideoPath(), work_num_frames, prev_frame.cols, prev_frame.rows);
             auto started = std::chrono::high_resolution_clock::now();
@@ -733,6 +736,7 @@ int main(int argc, char* argv[]) {
 
             sc_visualizer.SetFrame(prev_frame);
 
+            // actions_type is 0 (STUDENT)
             if (actions_type == TOP_K) {
                 if ( (is_monitoring_enabled && key == SPACE_KEY) ||
                      (!is_monitoring_enabled && key != SPACE_KEY) ) {
@@ -841,10 +845,42 @@ int main(int argc, char* argv[]) {
                 for (const auto& face : faces) {
                     face_rois.push_back(prev_frame(face.rect));
                 }
+
+                #if 1
+                start_t = std::chrono::steady_clock::now();
                 landmarks_detector.Compute(face_rois, &landmarks, cv::Size(2, 5));
                 AlignFaces(&face_rois, &landmarks);
                 face_reid.Compute(face_rois, &embeddings);
+                end_t = std::chrono::steady_clock::now();
+                std::cout << "FR : " 
+                          << std::chrono::duration_cast<std::chrono::milliseconds>(end_t - start_t).count()
+                          << " ms" << std::endl;
+                #else
+                start_t = std::chrono::steady_clock::now();
+                landmarks_detector.Compute(face_rois, &landmarks, cv::Size(2, 5));
+                end_t = std::chrono::steady_clock::now();
+                std::cout << "Landmarks : " 
+                          << std::chrono::duration_cast<std::chrono::microseconds>(end_t - start_t).count()
+                          << " µs" << std::endl;
+
+                start_t = std::chrono::steady_clock::now();
+                AlignFaces(&face_rois, &landmarks);
+                end_t = std::chrono::steady_clock::now();
+                std::cout << "Align Faces : " 
+                          << std::chrono::duration_cast<std::chrono::microseconds>(end_t - start_t).count()
+                          << " µs" << std::endl;
+                
+                start_t = std::chrono::steady_clock::now();
+                face_reid.Compute(face_rois, &embeddings);
+                end_t = std::chrono::steady_clock::now();
+                std::cout << "Get Embeddings : " 
+                          << std::chrono::duration_cast<std::chrono::microseconds>(end_t - start_t).count()
+                          << " µs" << std::endl;
+                #endif
+
                 auto ids = face_gallery.GetIDsByEmbeddings(embeddings);
+
+                start_t = std::chrono::steady_clock::now();
 
                 for (size_t i = 0; i < faces.size(); i++) {
                     int label = ids.empty() ? EmbeddingsGallery::unknown_id : ids[i];
@@ -863,8 +899,7 @@ int main(int argc, char* argv[]) {
                 const auto tracked_actions = tracker_action.TrackedDetectionsWithLabels();
 
                 auto elapsed = std::chrono::high_resolution_clock::now() - started;
-                auto elapsed_ms =
-                        std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+                auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
 
                 work_time_ms += elapsed_ms;
 
@@ -919,6 +954,12 @@ int main(int argc, char* argv[]) {
                         logger.AddPersonToFrame(track_action.rect, action_label, teacher_id);
                     }
                 }
+                end_t = std::chrono::steady_clock::now();
+                /*
+                std::cout << "Track : " 
+                          << std::chrono::duration_cast<std::chrono::microseconds>(end_t - start_t).count()
+                          << " µs" << std::endl;
+                */
 
                 sc_visualizer.DrawFPS(1e3f / (work_time_ms / static_cast<float>(work_num_frames) + 1e-6f),
                                       red_color);

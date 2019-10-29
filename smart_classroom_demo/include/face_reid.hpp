@@ -11,7 +11,7 @@
 #include <opencv2/core/core.hpp>
 
 #include "cnn.hpp"
-#include "detector.hpp"
+#include "face_detect.hpp"
 
 enum class RegistrationStatus {
   SUCCESS,
