@@ -20,6 +20,9 @@ static const char person_action_detection_model_message[] = "Required. Path to t
 static const char face_detection_model_message[] = "Required. Path to the Face Detection Retail model (.xml) file.";
 static const char facial_landmarks_model_message[] = "Required. Path to the Facial Landmarks Regression Retail model (.xml) file.";
 static const char face_reid_model_message[] = "Required. Path to the Face Reidentification Retail model (.xml) file.";
+static const char age_gender_model_message[] = "Optional. Path to an .xml file with a trained Age/Gender Recognition model.";
+static const char head_pose_model_message[] = "Optional. Path to an .xml file with a trained Head Pose Estimation model.";
+static const char emotions_model_message[] = "Optional. Path to an .xml file with a trained Emotions Recognition model.";
 
 /// @brief Message for assigning Person/Action detection inference to device
 static const char target_device_message_action_detection[] = "Optional. Specify the target device for Person/Action Detection Retail "\
@@ -44,6 +47,45 @@ static const char target_device_message_face_reid[] = "Optional. Specify the tar
                                                       "(the list of available devices is shown below).Default value is CPU. " \
                                                       "Use \"-d HETERO:<comma-separated_devices_list>\" format to specify HETERO plugin. " \
                                                       "The application looks for a suitable plugin for the specified device.";
+
+/// @brief Message for assigning age/gender calculation to device
+static const char target_device_message_ag[] = "Optional. Target device for Age/Gender Recognition network (the list of available devices is shown below). " \
+"Default value is CPU. Use \"-d HETERO:<comma-separated_devices_list>\" format to specify HETERO plugin. " \
+"The demo will look for a suitable plugin for a specified device.";
+
+/// @brief Message for assigning head pose calculation to device
+static const char target_device_message_hp[] = "Optional. Target device for Head Pose Estimation network (the list of available devices is shown below). " \
+"Default value is CPU. Use \"-d HETERO:<comma-separated_devices_list>\" format to specify HETERO plugin. " \
+"The demo will look for a suitable plugin for a specified device.";
+
+/// @brief Message for assigning emotions calculation to device
+static const char target_device_message_em[] = "Optional. Target device for Emotions Recognition network (the list of available devices is shown below). " \
+"Default value is CPU. Use \"-d HETERO:<comma-separated_devices_list>\" format to specify HETERO plugin. " \
+"The demo will look for a suitable plugin for a specified device.";
+
+/// @brief Message for the maximum number of simultaneously processed faces for Age Gender network
+static const char num_batch_ag_message[] = "Optional. Number of maximum simultaneously processed faces for Age/Gender Recognition network " \
+"(by default, it is 16)";
+
+/// @brief Message for the maximum number of simultaneously processed faces for Head Pose network
+static const char num_batch_hp_message[] = "Optional. Number of maximum simultaneously processed faces for Head Pose Estimation network " \
+"(by default, it is 16)";
+
+/// @brief Message for the maximum number of simultaneously processed faces for Emotions network
+static const char num_batch_em_message[] = "Optional. Number of maximum simultaneously processed faces for Emotions Recognition network " \
+"(by default, it is 16)";
+
+/// @brief Message for dynamic batching support for AgeGender net
+static const char dyn_batch_ag_message[] = "Optional. Enable dynamic batch size for Age/Gender Recognition network";
+
+/// @brief Message for dynamic batching support for HeadPose net
+static const char dyn_batch_hp_message[] = "Optional. Enable dynamic batch size for Head Pose Estimation network";
+
+/// @brief Message for dynamic batching support for Emotions net
+static const char dyn_batch_em_message[] = "Optional. Enable dynamic batch size for Emotions Recognition network";
+
+/// @brief Message for asynchronous mode
+static const char async_message[] = "Optional. Enable asynchronous mode";
 
 /// @brief Message for performance counters
 static const char performance_counter_message[] = "Optional. Enables per-layer performance statistics.";
@@ -162,6 +204,18 @@ DEFINE_string(m_lm, "", facial_landmarks_model_message);
 /// It is a required parameter
 DEFINE_string(m_reid, "", face_reid_model_message);
 
+/// \brief Define parameter for Age Gender Recognition model file<br>
+/// It is a optional parameter
+DEFINE_string(m_ag, "", age_gender_model_message);
+
+/// \brief Define parameter for Head Pose Estimation model file<br>
+/// It is a optional parameter
+DEFINE_string(m_hp, "", head_pose_model_message);
+
+/// \brief Define parameter for Emotions Recognition model file<br>
+/// It is a optional parameter
+DEFINE_string(m_em, "", emotions_model_message);
+
 /// @brief device the target device for person/action detection infer on <br>
 DEFINE_string(d_act, "CPU", target_device_message_action_detection);
 
@@ -173,6 +227,37 @@ DEFINE_string(d_lm, "CPU", target_device_message_landmarks_regression);
 
 /// @brief device the target device for face reidentification infer on <br>
 DEFINE_string(d_reid, "CPU", target_device_message_face_reid);
+
+/// \brief Define parameter for target device for Age/Gender Recognition network<br>
+DEFINE_string(d_ag, "CPU", target_device_message_ag);
+
+/// \brief Define parameter for target device for Head Pose Estimation network<br>
+DEFINE_string(d_hp, "CPU", target_device_message_hp);
+
+/// \brief Define parameter for target device for Emotions Recognition network<br>
+DEFINE_string(d_em, "CPU", target_device_message_em);
+
+/// \brief Define parameter for maximum batch size for Age/Gender Recognition network<br>
+DEFINE_uint32(n_ag, 16, num_batch_ag_message);
+
+/// \brief Define parameter to enable dynamic batch size for Age/Gender Recognition network<br>
+DEFINE_bool(dyn_ag, false, dyn_batch_ag_message);
+
+/// \brief Define parameter for maximum batch size for Head Pose Estimation network<br>
+DEFINE_uint32(n_hp, 16, num_batch_hp_message);
+
+/// \brief Define parameter to enable dynamic batch size for Head Pose Estimation network<br>
+DEFINE_bool(dyn_hp, false, dyn_batch_hp_message);
+
+/// \brief Define parameter for maximum batch size for Emotions Recognition network<br>
+DEFINE_uint32(n_em, 16, num_batch_em_message);
+
+/// \brief Define parameter to enable dynamic batch size for Emotions Recognition network<br>
+DEFINE_bool(dyn_em, false, dyn_batch_em_message);
+
+/// \brief Define a flag to enable aynchronous execution<br>
+/// It is an optional parameter
+DEFINE_bool(async, false, async_message);
 
 /// @brief Enable per-layer performance report
 DEFINE_bool(pc, false, performance_counter_message);

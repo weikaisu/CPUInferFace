@@ -22,6 +22,9 @@
 #include <chrono>
 #include <ie_iextension.h>
 
+#include "face.hpp"
+#include "face_detectors.hpp"
+
 #include "cnn.hpp"
 #include "face_detect.hpp"
 #include "face_reid.hpp"
@@ -664,6 +667,8 @@ int main(int argc, char* argv[]) {
         DetectedActions actions;
         detection::DetectedObjects faces;
 
+        EmotionsDetection emotionsDetector(FLAGS_m_em, FLAGS_d_em, FLAGS_n_em, FLAGS_dyn_em, FLAGS_async, FLAGS_r);
+
         float work_time_ms = 0.f;
         float wait_time_ms = 0.f;
         size_t work_num_frames = 0;
@@ -843,10 +848,19 @@ int main(int argc, char* argv[]) {
                 TrackedObjects tracked_face_objects;
 
                 for (const auto& face : faces) {
-                    face_rois.push_back(prev_frame(face.rect));
+                    //face_rois.push_back(prev_frame(face.rect));
+                    cv::Mat face_roi = prev_frame(face.rect);
+                    face_rois.push_back(face_roi);
+                    //ageGenderDetector.enqueue(face_roi);
+                    //headPoseDetector.enqueue(face_roi);
+                    emotionsDetector.enqueue(face_roi);
                 }
 
                 #if 1
+                //ageGenderDetector.submitRequest();
+                //headPoseDetector.submitRequest();
+                emotionsDetector.submitRequest();
+
                 start_t = std::chrono::steady_clock::now();
                 landmarks_detector.Compute(face_rois, &landmarks, cv::Size(2, 5));
                 AlignFaces(&face_rois, &landmarks);
@@ -855,6 +869,10 @@ int main(int argc, char* argv[]) {
                 std::cout << "FR : " 
                           << std::chrono::duration_cast<std::chrono::milliseconds>(end_t - start_t).count()
                           << " ms" << std::endl;
+                
+                //ageGenderDetector.wait();
+                //headPoseDetector.wait();
+                emotionsDetector.wait();
                 #else
                 start_t = std::chrono::steady_clock::now();
                 landmarks_detector.Compute(face_rois, &landmarks, cv::Size(2, 5));
