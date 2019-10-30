@@ -515,10 +515,13 @@ int main(int argc, char* argv[]) {
         slog::info << "Get FPS/Width/Height: " << cap.GetFPS() << "," << cap.GetWidth() << "," << cap.GetHeight() <<slog::endl;
 
         slog::info << "Loading Inference Engine" << slog::endl;
+
         Core ie;
 
+        EmotionsDetection emotionsDetector(FLAGS_m_em, FLAGS_d_em, FLAGS_n_em, FLAGS_dyn_em, FLAGS_async, FLAGS_r);
+
         std::vector<std::string> devices = {FLAGS_d_act, FLAGS_d_fd, FLAGS_d_lm,
-                                            FLAGS_d_reid};
+                                            FLAGS_d_reid, FLAGS_d_em};
         std::set<std::string> loadedDevices;
 
         slog::info << "Device info: " << slog::endl;
@@ -557,6 +560,8 @@ int main(int argc, char* argv[]) {
 
             loadedDevices.insert(device);
         }
+
+        Load(emotionsDetector).into(ie, FLAGS_d_em, FLAGS_dyn_em);
 
         // Load action detector
         ActionDetectorConfig action_config(ad_model_path, ad_weights_path);
@@ -666,8 +671,10 @@ int main(int argc, char* argv[]) {
         cv::Mat frame, prev_frame;
         DetectedActions actions;
         detection::DetectedObjects faces;
+        std::list<Face::Ptr> faces_info;
+        size_t id = 0;
 
-        EmotionsDetection emotionsDetector(FLAGS_m_em, FLAGS_d_em, FLAGS_n_em, FLAGS_dyn_em, FLAGS_async, FLAGS_r);
+        
 
         float work_time_ms = 0.f;
         float wait_time_ms = 0.f;
@@ -895,6 +902,71 @@ int main(int argc, char* argv[]) {
                           << std::chrono::duration_cast<std::chrono::microseconds>(end_t - start_t).count()
                           << " µs" << std::endl;
                 #endif
+
+                //  Postprocessing
+                std::list<Face::Ptr> prev_faces_info;
+
+                if (!FLAGS_no_smooth) {
+                    prev_faces_info.insert(prev_faces_info.begin(), faces_info.begin(), faces_info.end());
+                }
+
+                faces_info.clear();
+
+                // For every detected face
+                const size_t face_w  = static_cast<size_t>(frame.cols);
+                const size_t face_h = static_cast<size_t>(frame.rows);
+                for (size_t i = 0; i < faces.size(); i++) {
+                    auto& result = faces[i];
+                    cv::Rect rect = result.rect & cv::Rect(0, 0, face_w, face_h);
+
+                    Face::Ptr face;
+                    if (!FLAGS_no_smooth) {
+                        face = matchFace(rect, prev_faces_info);
+                        float intensity_mean = calcMean(prev_frame(rect));
+
+                        if ((face == nullptr) ||
+                            ((face != nullptr) && ((std::abs(intensity_mean - face->_intensity_mean) / face->_intensity_mean) > 0.07f))) {
+                            face = std::make_shared<Face>(id++, rect);
+                        } else {
+                            prev_faces_info.remove(face);
+                        }
+
+                        face->_intensity_mean = intensity_mean;
+                        face->_location = rect;
+                    } else {
+                        face = std::make_shared<Face>(id++, rect);
+                    }
+
+                    face->emotionsEnable((emotionsDetector.enabled() &&
+                                        i < emotionsDetector.maxBatch));
+                    if (face->isEmotionsEnabled()) {
+                        face->updateEmotions(emotionsDetector[i]);
+                        auto emotion = face->getMainEmotion();
+                        std::cout << emotion.first << std::endl;
+                    }
+/*
+                    face->ageGenderEnable((ageGenderDetector.enabled() &&
+                                        i < ageGenderDetector.maxBatch));
+                    if (face->isAgeGenderEnabled()) {
+                        AgeGenderDetection::Result ageGenderResult = ageGenderDetector[i];
+                        face->updateGender(ageGenderResult.maleProb);
+                        face->updateAge(ageGenderResult.age);
+                    }
+
+                    face->headPoseEnable((headPoseDetector.enabled() &&
+                                        i < headPoseDetector.maxBatch));
+                    if (face->isHeadPoseEnabled()) {
+                        face->updateHeadPose(headPoseDetector[i]);
+                    }
+
+                    face->landmarksEnable((facialLandmarksDetector.enabled() &&
+                                        i < facialLandmarksDetector.maxBatch));
+                    if (face->isLandmarksEnabled()) {
+                        face->updateLandmarks(facialLandmarksDetector[i]);
+                    }
+*/
+                    faces_info.push_back(face);
+                }
 
                 auto ids = face_gallery.GetIDsByEmbeddings(embeddings);
 

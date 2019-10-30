@@ -69,6 +69,7 @@ fi
 mkdir -p $build_dir
 cd $build_dir
 cmake -DCMAKE_BUILD_TYPE=Release $DEMOS_PATH
+#cmake -DCMAKE_BUILD_TYPE=Debug $DEMOS_PATH
 make $NUM_THREADS
 
 printf "\nBuild completed, you can find binaries for all demos in the $HOME/omz_demos_build/${OS_PATH}/Release subfolder.\n\n"

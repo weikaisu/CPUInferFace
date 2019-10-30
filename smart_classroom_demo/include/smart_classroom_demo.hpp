@@ -177,6 +177,12 @@ static const char act_det_output_message[] = "Optional. Output file name to save
 /// @brief Message for number of frames for action tracker
 static const char tracker_smooth_size_message[] = "Optional. Number of frames to smooth actions.";
 
+/// @brief Message for smooth argument
+static const char no_smooth_output_message[] = "Optional. Do not smooth person attributes";
+
+/// @brief Message for smooth argument
+static const char no_show_emotion_bar_message[] = "Optional. Do not show emotion bar";
+
 /// @brief Define flag for showing help message <br>
 DEFINE_bool(h, false, help_message);
 
@@ -373,6 +379,10 @@ DEFINE_string(al, "", act_det_output_message);
 /// @brief Number of frames to smooth actions<br>
 /// It is an optional parameter
 DEFINE_int32(ss_t, -1, tracker_smooth_size_message);
+
+/// \brief Define a flag to disable smoothing person attributes<br>
+/// It is an optional parameter
+DEFINE_bool(no_smooth, false, no_smooth_output_message);
 
 /**
 * @brief This function show a help message
