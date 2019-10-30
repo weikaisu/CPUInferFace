@@ -2,7 +2,9 @@
 
 build_dir=./models
 
+#../CPUInferFaceRun/intel64/Release/smart_classroom_demo \
 ../CPUInferFaceRun/intel64/Debug/smart_classroom_demo \
+
 \ #-i ~/Videos/classroom-children.mp4 \
 -cam_w 1920 \ #4096, 1080 \
 -cam_h 1080 \ #2160, 720 \

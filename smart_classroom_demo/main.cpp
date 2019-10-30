@@ -518,10 +518,12 @@ int main(int argc, char* argv[]) {
 
         Core ie;
 
+        AgeGenderDetection ageGenderDetector(FLAGS_m_ag, FLAGS_d_ag, FLAGS_n_ag, FLAGS_dyn_ag, FLAGS_async, FLAGS_r);
+        HeadPoseDetection headPoseDetector(FLAGS_m_hp, FLAGS_d_hp, FLAGS_n_hp, FLAGS_dyn_hp, FLAGS_async, FLAGS_r);
         EmotionsDetection emotionsDetector(FLAGS_m_em, FLAGS_d_em, FLAGS_n_em, FLAGS_dyn_em, FLAGS_async, FLAGS_r);
 
-        std::vector<std::string> devices = {FLAGS_d_act, FLAGS_d_fd, FLAGS_d_lm,
-                                            FLAGS_d_reid, FLAGS_d_em};
+        std::vector<std::string> devices = {FLAGS_d_act, FLAGS_d_fd, FLAGS_d_lm, FLAGS_d_reid,
+                                            FLAGS_d_ag, FLAGS_d_hp, FLAGS_d_em};
         std::set<std::string> loadedDevices;
 
         slog::info << "Device info: " << slog::endl;
@@ -561,7 +563,11 @@ int main(int argc, char* argv[]) {
             loadedDevices.insert(device);
         }
 
+        Load(ageGenderDetector).into(ie, FLAGS_d_ag, FLAGS_dyn_ag);
+        Load(headPoseDetector).into(ie, FLAGS_d_hp, FLAGS_dyn_hp);
         Load(emotionsDetector).into(ie, FLAGS_d_em, FLAGS_dyn_em);
+
+        bool isFaceAnalyticsEnabled = ageGenderDetector.enabled() || headPoseDetector.enabled() || emotionsDetector.enabled() ;
 
         // Load action detector
         ActionDetectorConfig action_config(ad_model_path, ad_weights_path);
@@ -854,20 +860,23 @@ int main(int argc, char* argv[]) {
                 std::vector<cv::Mat> face_rois, landmarks, embeddings;
                 TrackedObjects tracked_face_objects;
 
-                for (const auto& face : faces) {
-                    //face_rois.push_back(prev_frame(face.rect));
-                    cv::Mat face_roi = prev_frame(face.rect);
-                    face_rois.push_back(face_roi);
-                    //ageGenderDetector.enqueue(face_roi);
-                    //headPoseDetector.enqueue(face_roi);
-                    emotionsDetector.enqueue(face_roi);
+                if (isFaceAnalyticsEnabled)
+                {
+                    for (const auto& face : faces)
+                    {
+                        //face_rois.push_back(prev_frame(face.rect));
+                        cv::Mat face_roi = prev_frame(face.rect);
+                        face_rois.push_back(face_roi);
+                        ageGenderDetector.enqueue(face_roi);
+                        headPoseDetector.enqueue(face_roi);
+                        emotionsDetector.enqueue(face_roi);
+                    }
+                    ageGenderDetector.submitRequest();
+                    headPoseDetector.submitRequest();
+                    emotionsDetector.submitRequest();
                 }
 
                 #if 1
-                //ageGenderDetector.submitRequest();
-                //headPoseDetector.submitRequest();
-                emotionsDetector.submitRequest();
-
                 start_t = std::chrono::steady_clock::now();
                 landmarks_detector.Compute(face_rois, &landmarks, cv::Size(2, 5));
                 AlignFaces(&face_rois, &landmarks);
@@ -877,9 +886,12 @@ int main(int argc, char* argv[]) {
                           << std::chrono::duration_cast<std::chrono::milliseconds>(end_t - start_t).count()
                           << " ms" << std::endl;
                 
-                //ageGenderDetector.wait();
-                //headPoseDetector.wait();
-                emotionsDetector.wait();
+                if (isFaceAnalyticsEnabled)
+                {
+                    ageGenderDetector.wait();
+                    headPoseDetector.wait();
+                    emotionsDetector.wait();
+                }
                 #else
                 start_t = std::chrono::steady_clock::now();
                 landmarks_detector.Compute(face_rois, &landmarks, cv::Size(2, 5));
@@ -944,7 +956,7 @@ int main(int argc, char* argv[]) {
                         auto emotion = face->getMainEmotion();
                         std::cout << emotion.first << std::endl;
                     }
-/*
+
                     face->ageGenderEnable((ageGenderDetector.enabled() &&
                                         i < ageGenderDetector.maxBatch));
                     if (face->isAgeGenderEnabled()) {
@@ -959,12 +971,6 @@ int main(int argc, char* argv[]) {
                         face->updateHeadPose(headPoseDetector[i]);
                     }
 
-                    face->landmarksEnable((facialLandmarksDetector.enabled() &&
-                                        i < facialLandmarksDetector.maxBatch));
-                    if (face->isLandmarksEnabled()) {
-                        face->updateLandmarks(facialLandmarksDetector[i]);
-                    }
-*/
                     faces_info.push_back(face);
                 }
 
@@ -1068,6 +1074,13 @@ int main(int argc, char* argv[]) {
             logger.FinalizeFrameRecord();
         }
         sc_visualizer.Finalize();
+
+        // Showing performance results
+        if (FLAGS_pc) {
+            ageGenderDetector.printPerformanceCounts(getFullDeviceName(ie, FLAGS_d_ag));
+            headPoseDetector.printPerformanceCounts(getFullDeviceName(ie, FLAGS_d_hp));
+            emotionsDetector.printPerformanceCounts(getFullDeviceName(ie, FLAGS_d_em));
+        }
 
         slog::info << slog::endl;
         if (work_num_frames > 0) {
