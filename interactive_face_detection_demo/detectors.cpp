@@ -245,6 +245,8 @@ void FaceDetection::fetchResults() {
                       << ((r.confidence > detectionThreshold) ? " WILL BE RENDERED!" : "") << std::endl;
         }
         if (r.confidence > detectionThreshold) {
+        //if (r.confidence > detectionThreshold && r.location.width>200) {
+            //std::cout << bb_new_width << "," << bb_new_height << std::endl;
             results.push_back(r);
         }
     }
@@ -559,18 +561,19 @@ std::map<std::string, float> EmotionsDetection::operator[] (int idx) const {
     std::map<std::string, float> emotions;
 
     if (doRawOutputMessages) {
-        std::cout << "[" << idx << "] element, predicted emotions (name = prob):" << std::endl;
+        //std::cout << "[" << idx << "] element, predicted emotions (name = prob):" << std::endl;
     }
 
     for (size_t i = 0; i < emotionsVecSize; i++) {
         emotions[emotionsVec[i]] = outputIdxPos[i];
 
         if (doRawOutputMessages) {
-            std::cout << emotionsVec[i] << " = " << outputIdxPos[i];
+            //std::cout << emotionsVec[i] << " = " << outputIdxPos[i];
+            std::cout << outputIdxPos[i];
             if (emotionsVecSize - 1 != i) {
-                std::cout << ", ";
+                std::cout << ",";
             } else {
-                std::cout << std::endl;
+                //std::cout << std::endl;
             }
         }
     }

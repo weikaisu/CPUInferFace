@@ -102,7 +102,7 @@ public:
     void draw(cv::Mat img, std::list<Face::Ptr> faces);
 
 private:
-    void drawFace(cv::Mat& img, Face::Ptr f, bool drawEmotionBar);
+    void drawFace(cv::Mat& img, Face::Ptr f, bool drawEmotionBar, int frame_cnt);
     cv::Point findCellForEmotionBar();
 
     std::map<size_t, DrawParams> drawParams;

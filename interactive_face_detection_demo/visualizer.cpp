@@ -186,7 +186,7 @@ void Visualizer::enableEmotionBar(std::vector<std::string> const& emotionNames) 
     }
 }
 
-void Visualizer::drawFace(cv::Mat& img, Face::Ptr f, bool drawEmotionBar) {
+void Visualizer::drawFace(cv::Mat& img, Face::Ptr f, bool drawEmotionBar, int frame_cnt) {
     auto genderColor = (f->isAgeGenderEnabled()) ?
                        ((f->isMale()) ? cv::Scalar(255, 0, 0) :
                                         cv::Scalar(147, 20, 255)) :
@@ -200,15 +200,18 @@ void Visualizer::drawFace(cv::Mat& img, Face::Ptr f, bool drawEmotionBar) {
 
     if (f->isEmotionsEnabled()) {
         auto emotion = f->getMainEmotion();
-        out << "," << emotion.first;
+        //out << "," << emotion.first;
+        out << "frame:" << frame_cnt << ", " << emotion.first << ", " << emotion.second*100 << "%";
     }
 
     cv::putText(img,
                 out.str(),
-                cv::Point2f(static_cast<float>(f->_location.x), static_cast<float>(f->_location.y - 20)),
+                //cv::Point2f(static_cast<float>(f->_location.x), static_cast<float>(f->_location.y - 20)),
+                //cv::Point2f(static_cast<float>(f->_location.x+f->_location.width+20), static_cast<float>(f->_location.y+f->_location.height)),
+                cv::Point2f(400, 700),
                 cv::FONT_HERSHEY_COMPLEX_SMALL,
                 1.5,
-                genderColor, 2);
+                cv::Scalar(255, 0, 0), 2);
 
     if (f->isHeadPoseEnabled()) {
         cv::Point3f center(static_cast<float>(f->_location.x + f->_location.width / 2),
@@ -300,14 +303,14 @@ void Visualizer::draw(cv::Mat img, std::list<Face::Ptr> faces) {
                 continue;
             }
 
-            drawFace(img, face, true);
+            drawFace(img, face, true, frameCounter);
 
             drawParams[face->getId()].frameIdx = frameCounter;
 
             cv::Point& cell = drawParams[face->getId()].cell;
             drawMap.at<uchar>(cell.y, cell.x) = 1;
         } else {
-            drawFace(img, face, false);
+            drawFace(img, face, false, frameCounter);
         }
     }
 
@@ -327,7 +330,7 @@ void Visualizer::draw(cv::Mat img, std::list<Face::Ptr> faces) {
             dp.cell = findCellForEmotionBar();
 
             if ((dp.cell.x < 0) || (dp.cell.y < 0)) {
-                drawFace(img, face, false);
+                drawFace(img, face, false, frameCounter);
             } else {
                 int nycells2 = (nycells + 1) / 2;
                 int nxcells2 = (nxcells + 1) / 2;
@@ -347,7 +350,7 @@ void Visualizer::draw(cv::Mat img, std::list<Face::Ptr> faces) {
                 dp.frameIdx = frameCounter;
                 drawParams[face->getId()] = dp;
 
-                drawFace(img, face, true);
+                drawFace(img, face, true, frameCounter);
 
                 cv::Point& cell = drawParams[face->getId()].cell;
                 drawMap.at<uchar>(cell.y, cell.x) = 1;

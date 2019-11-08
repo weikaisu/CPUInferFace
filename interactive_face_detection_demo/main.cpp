@@ -100,7 +100,9 @@ int main(int argc, char *argv[]) {
 
         cv::VideoWriter videoWriter;
         if (!FLAGS_o.empty()) {
-            videoWriter.open(FLAGS_o, cv::VideoWriter::fourcc('I', 'Y', 'U', 'V'), 25, cv::Size(width, height));
+            //videoWriter.open(FLAGS_o, cv::VideoWriter::fourcc('I', 'Y', 'U', 'V'), 25, cv::Size(width, height));
+            //videoWriter.open(FLAGS_o, cv::VideoWriter::fourcc('M', 'P', '4', 'V'), 25, cv::Size(width, height));
+            videoWriter.open(FLAGS_o, 0x31637661, 5, cv::Size(width, height));
         }
         // ---------------------------------------------------------------------------------------------------
         // --------------------------- 1. Loading Inference Engine -----------------------------
@@ -115,7 +117,7 @@ int main(int argc, char *argv[]) {
             {FLAGS_d_em, FLAGS_m_em},
             {FLAGS_d_lm, FLAGS_m_lm}
         };
-        FaceDetection faceDetector(FLAGS_m, FLAGS_d, 1, false, FLAGS_async, FLAGS_t, FLAGS_r,
+        FaceDetection faceDetector(FLAGS_m, FLAGS_d, 1, false, FLAGS_async, FLAGS_t, false,
                                    static_cast<float>(FLAGS_bb_enlarge_coef), static_cast<float>(FLAGS_dx_coef), static_cast<float>(FLAGS_dy_coef));
         AgeGenderDetection ageGenderDetector(FLAGS_m_ag, FLAGS_d_ag, FLAGS_n_ag, FLAGS_dyn_ag, FLAGS_async, FLAGS_r);
         HeadPoseDetection headPoseDetector(FLAGS_m_hp, FLAGS_d_hp, FLAGS_n_hp, FLAGS_dyn_hp, FLAGS_async, FLAGS_r);
@@ -215,9 +217,12 @@ int main(int argc, char *argv[]) {
         }
         std::cout << std::endl;
 
+        std::cout << "frame" << "," << "neutral" << "," << "happy" << "," << "sad" << "," << "surprise" << "," << "anger" << "," << "MAX" << "," << "Prob" << std::endl;
         while (true) {
             timer.start("total");
             framesCounter++;
+            //slog::info << "Frame Number: " << framesCounter << slog::endl;
+            //if (framesCounter==1239) break;
             isLastFrame = !frameReadStatus;
 
             // Retrieving face detection results for the previous frame
@@ -276,7 +281,7 @@ int main(int argc, char *argv[]) {
                 prev_faces.insert(prev_faces.begin(), faces.begin(), faces.end());
             }
 
-            faces.clear();
+            faces.clear();std::cout << framesCounter << ",";
 
             // For every detected face
             for (size_t i = 0; i < prev_detection_results.size(); i++) {
@@ -313,6 +318,8 @@ int main(int argc, char *argv[]) {
                                       i < emotionsDetector.maxBatch));
                 if (face->isEmotionsEnabled()) {
                     face->updateEmotions(emotionsDetector[i]);
+                    auto emotion = face->getMainEmotion();
+                    std::cout << "," << emotion.first << "," << emotion.second ;
                 }
 
                 face->headPoseEnable((headPoseDetector.enabled() &&
@@ -329,14 +336,17 @@ int main(int argc, char *argv[]) {
 
                 faces.push_back(face);
             }
+            std::cout << std::endl;
 
             //  Visualizing results
             if (!FLAGS_no_show || !FLAGS_o.empty()) {
+                #if 0
                 out.str("");
                 out << "Total image throughput: " << std::fixed << std::setprecision(2)
                     << 1000.f / (timer["total"].getSmoothedDuration()) << " fps";
                 cv::putText(prev_frame, out.str(), cv::Point2f(10, 45), cv::FONT_HERSHEY_TRIPLEX, 1.2,
                             cv::Scalar(255, 0, 0), 2);
+                #endif
 
                 // drawing faces
                 visualizer->draw(prev_frame, faces);
