@@ -34,6 +34,7 @@
 #include "image_grabber.hpp"
 #include "logger.hpp"
 #include "smart_classroom_demo.hpp"
+#include "visualizer.hpp"
 
 using namespace InferenceEngine;
 
@@ -95,6 +96,10 @@ public:
             rect_scale_y_ = static_cast<float>(new_size.width) / frame_.size().width;
             cv::resize(frame_, frame_, new_size);
         }
+    }
+
+    cv::Mat GetFrame(void) {
+        return frame_;
     }
 
     void Show() const {
@@ -341,6 +346,7 @@ std::vector<std::string> ParseActionLabels(const std::string& in_str) {
     std::istringstream stream_to_split(in_str);
 
     while (std::getline(stream_to_split, label, ',')) {
+      std::cout << label << std::endl;
       labels.push_back(label);
     }
 
@@ -680,8 +686,6 @@ int main(int argc, char* argv[]) {
         std::list<Face::Ptr> faces_info;
         size_t id = 0;
 
-        
-
         float work_time_ms = 0.f;
         float wait_time_ms = 0.f;
         size_t work_num_frames = 0;
@@ -726,6 +730,11 @@ int main(int argc, char* argv[]) {
             //vid_writer = cv::VideoWriter(FLAGS_out_v, cv::VideoWriter::fourcc('X', '2', '6', '4'), cap.GetFPS(), Visualizer::GetOutputSize(frame.size()));
         }
         Visualizer sc_visualizer(!FLAGS_no_show, vid_writer, num_top_persons);
+        FaceVisualizer::Ptr face_visualizer;
+        if (!FLAGS_no_show) {
+            //face_visualizer = std::make_shared<FaceVisualizer>(cv::Size(width, height));
+            face_visualizer = std::make_shared<FaceVisualizer>(frame.size());
+        }
         DetectionsLogger logger(std::cout, FLAGS_r, FLAGS_ad, FLAGS_al);
 
         const int smooth_window_size = static_cast<int>(cap.GetFPS() * FLAGS_d_ad);
@@ -860,17 +869,22 @@ int main(int argc, char* argv[]) {
                 std::vector<cv::Mat> face_rois, landmarks, embeddings;
                 TrackedObjects tracked_face_objects;
 
-                if (isFaceAnalyticsEnabled)
+                
+                for (const auto& face : faces)
                 {
-                    for (const auto& face : faces)
+                    //face_rois.push_back(prev_frame(face.rect));
+                    cv::Mat face_roi = prev_frame(face.rect);
+                    face_rois.push_back(face_roi);
+                    if (isFaceAnalyticsEnabled)
                     {
-                        //face_rois.push_back(prev_frame(face.rect));
-                        cv::Mat face_roi = prev_frame(face.rect);
-                        face_rois.push_back(face_roi);
                         ageGenderDetector.enqueue(face_roi);
                         headPoseDetector.enqueue(face_roi);
                         emotionsDetector.enqueue(face_roi);
                     }
+                }
+
+                if (isFaceAnalyticsEnabled)
+                {
                     ageGenderDetector.submitRequest();
                     headPoseDetector.submitRequest();
                     emotionsDetector.submitRequest();
@@ -882,9 +896,11 @@ int main(int argc, char* argv[]) {
                 AlignFaces(&face_rois, &landmarks);
                 face_reid.Compute(face_rois, &embeddings);
                 end_t = std::chrono::steady_clock::now();
+                /*
                 std::cout << "FR : " 
                           << std::chrono::duration_cast<std::chrono::milliseconds>(end_t - start_t).count()
                           << " ms" << std::endl;
+                */
                 
                 if (isFaceAnalyticsEnabled)
                 {
@@ -914,6 +930,8 @@ int main(int argc, char* argv[]) {
                           << std::chrono::duration_cast<std::chrono::microseconds>(end_t - start_t).count()
                           << " µs" << std::endl;
                 #endif
+
+                auto ids = face_gallery.GetIDsByEmbeddings(embeddings);
 
                 //  Postprocessing
                 std::list<Face::Ptr> prev_faces_info;
@@ -953,8 +971,8 @@ int main(int argc, char* argv[]) {
                                         i < emotionsDetector.maxBatch));
                     if (face->isEmotionsEnabled()) {
                         face->updateEmotions(emotionsDetector[i]);
-                        auto emotion = face->getMainEmotion();
-                        std::cout << emotion.first << std::endl;
+                        //auto emotion = face->getMainEmotion();
+                        //std::cout << emotion.first << std::endl;
                     }
 
                     face->ageGenderEnable((ageGenderDetector.enabled() &&
@@ -963,25 +981,38 @@ int main(int argc, char* argv[]) {
                         AgeGenderDetection::Result ageGenderResult = ageGenderDetector[i];
                         face->updateGender(ageGenderResult.maleProb);
                         face->updateAge(ageGenderResult.age);
+                        //td::cout << face->getAge() << "," << face->isMale() << std::endl;
                     }
 
                     face->headPoseEnable((headPoseDetector.enabled() &&
                                         i < headPoseDetector.maxBatch));
                     if (face->isHeadPoseEnabled()) {
                         face->updateHeadPose(headPoseDetector[i]);
+                        //auto headpose = face->getHeadPose();
+                        //std::cout << headpose.Results.angle_r << std::endl;
                     }
 
+                    /*
+                    int id = ids.empty() ? EmbeddingsGallery::unknown_id : ids[i];
+                    face->setId(id);
+                    std::cout<<face->getId()<<",";
+                    */
                     faces_info.push_back(face);
                 }
-
-                auto ids = face_gallery.GetIDsByEmbeddings(embeddings);
+                //std::cout << std::endl;
 
                 start_t = std::chrono::steady_clock::now();
 
                 for (size_t i = 0; i < faces.size(); i++) {
+                    //auto face_info=faces_info.front();
+                    //auto emotion = face_info->getMainEmotion();
+                    //std::cout << emotion.first << std::endl;
+                    //faces_info.pop_front();
                     int label = ids.empty() ? EmbeddingsGallery::unknown_id : ids[i];
+                    //std::cout << label << ", ";
                     tracked_face_objects.emplace_back(faces[i].rect, faces[i].confidence, label);
                 }
+                //std::cout << std::endl;
                 tracker_reid.Process(prev_frame, tracked_face_objects, work_num_frames);
 
                 const auto tracked_faces = tracker_reid.TrackedDetectionsWithLabels();
@@ -1005,6 +1036,9 @@ int main(int argc, char* argv[]) {
                     std::string label_to_draw;
                     if (face.label != EmbeddingsGallery::unknown_id)
                         label_to_draw += face_gallery.GetLabelByID(face.label);
+                    
+                    //auto emotion = face->getMainEmotion();
+                    //label_to_draw += emotion.first;
 
                     int person_ind = GetIndexOfTheNearestPerson(face, tracked_actions);
                     int action_ind = default_action_index;
@@ -1057,8 +1091,8 @@ int main(int argc, char* argv[]) {
                           << " µs" << std::endl;
                 */
 
-                sc_visualizer.DrawFPS(1e3f / (work_time_ms / static_cast<float>(work_num_frames) + 1e-6f),
-                                      red_color);
+                face_visualizer->draw(sc_visualizer.GetFrame(), faces_info);
+                sc_visualizer.DrawFPS(1e3f / (work_time_ms / static_cast<float>(work_num_frames) + 1e-6f), red_color);
 
                 ++work_num_frames;
             }
