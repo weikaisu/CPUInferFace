@@ -113,6 +113,7 @@ void VectorCNN::Compute(const cv::Mat& frame,
 void VectorCNN::Compute(const std::vector<cv::Mat>& images, std::vector<cv::Mat>* vectors,
                                      cv::Size outp_shape) const {
     if (images.empty()) {
+        std::cout<<"no image"<<std::endl;
         return;
     }
     vectors->clear();

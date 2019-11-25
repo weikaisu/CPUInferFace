@@ -34,6 +34,7 @@ public:
     HeadPoseDetection::Results getHeadPose();
     const std::vector<float>& getLandmarks();
     size_t getId();
+    void setId(size_t);
 
     void ageGenderEnable(bool value);
     void emotionsEnable(bool value);

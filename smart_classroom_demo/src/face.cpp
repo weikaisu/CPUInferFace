@@ -81,6 +81,10 @@ size_t Face::getId() {
     return _id;
 }
 
+void Face::setId(size_t id) {
+    _id = id;
+}
+
 void Face::ageGenderEnable(bool value) {
     _isAgeGenderEnabled = value;
 }
