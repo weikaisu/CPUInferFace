@@ -44,16 +44,21 @@ class Visualizer {
 private:
     cv::Mat frame_;
     cv::Mat top_persons_;
+    cv::Mat roll_call_;
     const bool enabled_;
     const int num_top_persons_;
+    const int num_of_attendees_ = 6;
     cv::VideoWriter& writer_;
     float rect_scale_x_;
     float rect_scale_y_;
     static int const max_input_width_ = 4096;//1920;
     std::string const main_window_name_ = "Smart classroom demo";
     std::string const top_window_name_ = "Top-k students";
+    std::string const roll_call_window_name_ = "Attendees";
     static int const crop_width_ = 128;
     static int const crop_height_ = 320;
+    static int const crop_face_width_ = 128;
+    static int const crop_face_height_ = 128;
     static int const header_size_ = 80;
     static int const margin_size_ = 5;
 
@@ -65,6 +70,9 @@ public:
         }
 
         cv::namedWindow(main_window_name_);
+        cv::namedWindow(roll_call_window_name_);
+        CreateRollCallWindow();
+        ClearRollCallWindow();
 
         if (num_top_persons_ > 0) {
             cv::namedWindow(top_window_name_);
@@ -105,6 +113,7 @@ public:
     void Show() const {
         if (enabled_) {
             cv::imshow(main_window_name_, frame_);
+            //cv::waitKey(0);
         }
 
         if (writer_.isOpened()) {
@@ -219,6 +228,37 @@ public:
         }
 
         cv::imshow(top_window_name_, top_persons_);
+    }
+
+    void CreateRollCallWindow() {
+        const int width = margin_size_ * (num_of_attendees_ + 1) + crop_face_width_ * num_of_attendees_;
+        const int height = header_size_ + crop_face_height_ + margin_size_;
+
+        roll_call_.create(height, width, CV_8UC3);
+    }
+
+    void ClearRollCallWindow() {
+
+        roll_call_.setTo(cv::Scalar(255, 255, 255));
+
+        for (int i = 0; i < num_of_attendees_; ++i) {
+            const int shift = (i + 1) * margin_size_ + i * crop_face_width_;
+
+            cv::rectangle(roll_call_, cv::Point(shift, header_size_),
+                          cv::Point(shift + crop_face_width_, header_size_ + crop_face_height_),
+                          cv::Scalar(128, 128, 128), cv::FILLED);
+
+            const auto label_to_draw = "#" + std::to_string(i + 1);
+            int baseLine = 0;
+            const auto label_size =
+                cv::getTextSize(label_to_draw, cv::FONT_HERSHEY_SIMPLEX, 2, 2, &baseLine);
+            const int text_shift = (crop_face_width_ - label_size.width) / 2;
+            cv::putText(roll_call_, label_to_draw,
+                        cv::Point(shift + text_shift, label_size.height + baseLine / 2),
+                        cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+        }
+
+        cv::imshow(roll_call_window_name_, roll_call_);
     }
 
     void Finalize() const {
@@ -701,6 +741,13 @@ int main(int argc, char* argv[]) {
 
         int teacher_track_id = -1;
 
+        #if 0
+        while (cap.GrabNext() && total_num_frames<1354) {
+            cap.Retrieve(frame);
+            total_num_frames++;
+        }
+        #endif
+
         if (cap.GrabNext()) {
             cap.Retrieve(frame);
         } else {
@@ -723,11 +770,10 @@ int main(int argc, char* argv[]) {
 
         cv::VideoWriter vid_writer;
         if (!FLAGS_out_v.empty()) {
-            //vid_writer = cv::VideoWriter(FLAGS_out_v, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), cap.GetFPS(), Visualizer::GetOutputSize(frame.size()));
+            vid_writer = cv::VideoWriter(FLAGS_out_v, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), cap.GetFPS(), Visualizer::GetOutputSize(frame.size()));
             //vid_writer = cv::VideoWriter(FLAGS_out_v, cv::VideoWriter::fourcc('M', 'P', '4', 'V'), cap.GetFPS(), Visualizer::GetOutputSize(frame.size()));
             //vid_writer = cv::VideoWriter(FLAGS_out_v, 0x00000021, cap.GetFPS(), Visualizer::GetOutputSize(frame.size()));
-            vid_writer = cv::VideoWriter(FLAGS_out_v, 0x31637661, cap.GetFPS(), Visualizer::GetOutputSize(frame.size()));            
-            //vid_writer = cv::VideoWriter(FLAGS_out_v, cv::VideoWriter::fourcc('X', '2', '6', '4'), cap.GetFPS(), Visualizer::GetOutputSize(frame.size()));
+            //vid_writer = cv::VideoWriter(FLAGS_out_v, 0x31637661, 1/*cap.GetFPS()*/, Visualizer::GetOutputSize(frame.size()));
         }
         Visualizer sc_visualizer(!FLAGS_no_show, vid_writer, num_top_persons);
         FaceVisualizer::Ptr face_visualizer;
@@ -834,8 +880,7 @@ int main(int argc, char* argv[]) {
                     work_time_ms += elapsed_ms;
                     ++work_num_frames;
 
-                    sc_visualizer.DrawFPS(1e3f / (work_time_ms / static_cast<float>(work_num_frames) + 1e-6f),
-                                          red_color);
+                    sc_visualizer.DrawFPS(1e3f / (work_time_ms / static_cast<float>(work_num_frames) + 1e-6f), red_color);
 
                     for (const auto& action : tracked_actions) {
                         auto box_color = white_color;
@@ -949,6 +994,9 @@ int main(int argc, char* argv[]) {
                     auto& result = faces[i];
                     cv::Rect rect = result.rect & cv::Rect(0, 0, face_w, face_h);
 
+                    int label = ids.empty() ? EmbeddingsGallery::unknown_id : ids[i];
+                    tracked_face_objects.emplace_back(faces[i].rect, faces[i].confidence, label);
+
                     Face::Ptr face;
                     if (!FLAGS_no_smooth) {
                         face = matchFace(rect, prev_faces_info);
@@ -991,30 +1039,11 @@ int main(int argc, char* argv[]) {
                         //auto headpose = face->getHeadPose();
                         //std::cout << headpose.Results.angle_r << std::endl;
                     }
-
-                    /*
-                    int id = ids.empty() ? EmbeddingsGallery::unknown_id : ids[i];
-                    face->setId(id);
-                    std::cout<<face->getId()<<",";
-                    */
                     faces_info.push_back(face);
                 }
-                //std::cout << std::endl;
-
                 start_t = std::chrono::steady_clock::now();
 
-                for (size_t i = 0; i < faces.size(); i++) {
-                    //auto face_info=faces_info.front();
-                    //auto emotion = face_info->getMainEmotion();
-                    //std::cout << emotion.first << std::endl;
-                    //faces_info.pop_front();
-                    int label = ids.empty() ? EmbeddingsGallery::unknown_id : ids[i];
-                    //std::cout << label << ", ";
-                    tracked_face_objects.emplace_back(faces[i].rect, faces[i].confidence, label);
-                }
-                //std::cout << std::endl;
                 tracker_reid.Process(prev_frame, tracked_face_objects, work_num_frames);
-
                 const auto tracked_faces = tracker_reid.TrackedDetectionsWithLabels();
 
                 TrackedObjects tracked_action_objects;
@@ -1034,11 +1063,18 @@ int main(int argc, char* argv[]) {
                 for (size_t j = 0; j < tracked_faces.size(); j++) {
                     const auto& face = tracked_faces[j];
                     std::string label_to_draw;
-                    if (face.label != EmbeddingsGallery::unknown_id)
+                    if (face.label != EmbeddingsGallery::unknown_id) {
                         label_to_draw += face_gallery.GetLabelByID(face.label);
-                    
-                    //auto emotion = face->getMainEmotion();
-                    //label_to_draw += emotion.first;
+                        label_to_draw += ", ";
+
+                        Face::Ptr face_ptr = matchFace(face.rect, faces_info);
+                        auto emotion = face_ptr->getMainEmotion();
+                        label_to_draw += emotion.first;
+                        //if (emotion.first=="") std::cout<<"no emotion"<<std::endl;
+                        
+                        
+                        sc_visualizer.DrawCrop(face.rect, j, red_color);
+                    }
 
                     int person_ind = GetIndexOfTheNearestPerson(face, tracked_actions);
                     int action_ind = default_action_index;
@@ -1091,10 +1127,12 @@ int main(int argc, char* argv[]) {
                           << " µs" << std::endl;
                 */
 
-                face_visualizer->draw(sc_visualizer.GetFrame(), faces_info);
+                //if (!FLAGS_no_show) {
+                //face_visualizer->draw(sc_visualizer.GetFrame(), faces_info);
+                //}
                 sc_visualizer.DrawFPS(1e3f / (work_time_ms / static_cast<float>(work_num_frames) + 1e-6f), red_color);
 
-                ++work_num_frames;
+                ++work_num_frames; std::cout<<work_num_frames<<std::endl;
             }
 
             ++total_num_frames;

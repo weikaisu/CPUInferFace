@@ -63,12 +63,14 @@ RegistrationStatus EmbeddingsGallery::RegisterIdentity(const std::string& identi
       detector.fetchResults();
       detection::DetectedObjects faces = detector.results;
       if (faces.size() == 0) {
+        std::cout<<"FAILURE_NOT_DETECTED"<<std::endl;
         return RegistrationStatus::FAILURE_NOT_DETECTED;
       }
       cv::Mat face_roi = image(faces[0].rect);
       target = face_roi;
     }
     if ((target.rows < min_size_fr) && (target.cols < min_size_fr)) {
+        std::cout<<"FAILURE_LOW_QUALITY"<<std::endl;
       return RegistrationStatus::FAILURE_LOW_QUALITY;
     }
     cv::Mat landmarks;
@@ -112,7 +114,7 @@ EmbeddingsGallery::EmbeddingsGallery(const std::string& ids_list,
                 path = folder_name(ids_list) + separator() + item[i].string();
             }
 
-            cv::Mat image = cv::imread(path);
+            cv::Mat image = cv::imread(path);std::cout<<path<<std::endl;
             CV_Assert(!image.empty());
             cv::Mat emb;
             RegistrationStatus status = RegisterIdentity(label, image, min_size_fr, crop_gallery,  detector, landmarks_det, image_reid, emb);
@@ -146,6 +148,7 @@ std::vector<int> EmbeddingsGallery::GetIDsByEmbeddings(const std::vector<cv::Mat
     auto matched_idx = matcher.Solve(distances);
     std::vector<int> output_ids;
     for (auto col_idx : matched_idx) {
+        //std::cout<<distances.at<float>(output_ids.size(), col_idx) <<std::endl;
         if (distances.at<float>(output_ids.size(), col_idx) > reid_threshold)
             output_ids.push_back(unknown_id);
         else
