@@ -26,7 +26,7 @@ for file in files_list:
         labels.append(label)
         objects[label] = [path]
 
-with open('faces_gallery.json', 'w') as outfile:
+with open('./run/faces_gallery.json', 'w') as outfile:
     json.dump(objects, outfile)
 
 
