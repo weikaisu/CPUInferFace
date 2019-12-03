@@ -154,6 +154,40 @@ public:
         cv::imshow(top_window_name_, top_persons_);
     }
 
+    void DrawFace(cv::Rect roi, int id, const std::string& label_to_draw) const {std::cout<<id<<std::endl;
+
+        if (id < 0 || id >= num_of_attendees_) {
+            return;
+        }
+
+        if (rect_scale_x_ != 1 || rect_scale_y_ != 1) {
+            roi.x = cvRound(roi.x * rect_scale_x_);
+            roi.y = cvRound(roi.y * rect_scale_y_);
+
+            roi.height = cvRound(roi.height * rect_scale_y_);
+            roi.width = cvRound(roi.width * rect_scale_x_);
+        }
+
+        roi.x = std::max(0, roi.x);
+        roi.y = std::max(0, roi.y);
+        roi.width = std::min(roi.width, frame_.cols - roi.x);
+        roi.height = std::min(roi.height, frame_.rows - roi.y);
+
+        const auto crop_label = std::to_string(id + 1);
+
+        auto frame_crop = frame_(roi).clone();
+        cv::resize(frame_crop, frame_crop, cv::Size(crop_face_width_, crop_face_height_));
+
+        cv::putText(frame_crop, label_to_draw,
+                    cv::Point(10, 20),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+
+        const int shift = (id + 1) * margin_size_ + id * crop_face_width_;
+        frame_crop.copyTo(roll_call_(cv::Rect(shift, header_size_, crop_face_width_, crop_face_height_)));
+
+        cv::imshow(roll_call_window_name_, roll_call_);
+    }
+
     void DrawObject(cv::Rect rect, const std::string& label_to_draw,
                     const cv::Scalar& text_color, const cv::Scalar& bbox_color, bool plot_bg) {
         if (!enabled_ && !writer_.isOpened()) {
@@ -255,10 +289,10 @@ public:
             const int text_shift = (crop_face_width_ - label_size.width) / 2;
             cv::putText(roll_call_, label_to_draw,
                         cv::Point(shift + text_shift, label_size.height + baseLine / 2),
-                        cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+                        cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
         }
 
-        cv::imshow(roll_call_window_name_, roll_call_);
+        //cv::imshow(roll_call_window_name_, roll_call_);
     }
 
     void Finalize() const {
@@ -1059,7 +1093,11 @@ int main(int argc, char* argv[]) {
 
                 work_time_ms += elapsed_ms;
 
+                if(!(work_num_frames%10))
+                    sc_visualizer.ClearRollCallWindow();
+
                 std::map<int, int> frame_face_obj_id_to_action;
+                int facce_idx = 0;
                 for (size_t j = 0; j < tracked_faces.size(); j++) {
                     const auto& face = tracked_faces[j];
                     std::string label_to_draw;
@@ -1072,8 +1110,9 @@ int main(int argc, char* argv[]) {
                         label_to_draw += emotion.first;
                         //if (emotion.first=="") std::cout<<"no emotion"<<std::endl;
                         
-                        
-                        sc_visualizer.DrawCrop(face.rect, j, red_color);
+                        if(!(work_num_frames%10)) {
+                            sc_visualizer.DrawFace(face.rect, facce_idx++, label_to_draw);
+                        }
                     }
 
                     int person_ind = GetIndexOfTheNearestPerson(face, tracked_actions);
