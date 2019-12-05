@@ -35,6 +35,7 @@
 #include "logger.hpp"
 #include "smart_classroom_demo.hpp"
 #include "visualizer.hpp"
+#include "csvfile.hpp"
 
 using namespace InferenceEngine;
 
@@ -154,9 +155,9 @@ public:
         cv::imshow(top_window_name_, top_persons_);
     }
 
-    void DrawFace(cv::Rect roi, int id, const std::string& label_to_draw) const {std::cout<<id<<std::endl;
+    void DrawFace(cv::Rect roi, int id, const std::string& label_to_draw, bool save_face) const {
 
-        if (id < 0 || id >= num_of_attendees_) {
+        if (!enabled_ || id < 0 || id >= num_of_attendees_) {
             return;
         }
 
@@ -174,8 +175,13 @@ public:
         roi.height = std::min(roi.height, frame_.rows - roi.y);
 
         const auto crop_label = std::to_string(id + 1);
-
         auto frame_crop = frame_(roi).clone();
+
+        if(save_face) {
+            std::string file_name = crop_label + ".jpg";
+            cv::imwrite(file_name, frame_crop);
+        }
+
         cv::resize(frame_crop, frame_crop, cv::Size(crop_face_width_, crop_face_height_));
 
         cv::putText(frame_crop, label_to_draw,
@@ -265,6 +271,10 @@ public:
     }
 
     void CreateRollCallWindow() {
+        if (!enabled_) {
+            return;
+        }
+
         const int width = margin_size_ * (num_of_attendees_ + 1) + crop_face_width_ * num_of_attendees_;
         const int height = header_size_ + crop_face_height_ + margin_size_;
 
@@ -272,6 +282,9 @@ public:
     }
 
     void ClearRollCallWindow() {
+        if (!enabled_) {
+            return;
+        }
 
         roll_call_.setTo(cv::Scalar(255, 255, 255));
 
@@ -809,6 +822,13 @@ int main(int argc, char* argv[]) {
             //vid_writer = cv::VideoWriter(FLAGS_out_v, 0x00000021, cap.GetFPS(), Visualizer::GetOutputSize(frame.size()));
             //vid_writer = cv::VideoWriter(FLAGS_out_v, 0x31637661, 1/*cap.GetFPS()*/, Visualizer::GetOutputSize(frame.size()));
         }
+        
+        csvfile csv;
+        if (!FLAGS_out_csv.empty()) {
+            csv.open(FLAGS_out_csv);
+            csv << "label" << "main_emotion" << "frame_num" << endrow;
+        }
+        
         Visualizer sc_visualizer(!FLAGS_no_show, vid_writer, num_top_persons);
         FaceVisualizer::Ptr face_visualizer;
         if (!FLAGS_no_show) {
@@ -828,8 +848,17 @@ int main(int argc, char* argv[]) {
         
         auto start_t = std::chrono::steady_clock::now();
         auto end_t = std::chrono::steady_clock::now();
+        std::set<std::string> attended_human;
+        int face_idx = 0;
         while (!is_last_frame) {
             logger.CreateNextFrameRecord(cap.GetVideoPath(), work_num_frames, prev_frame.cols, prev_frame.rows);
+
+            if(!(work_num_frames%300)) {
+                attended_human.clear();
+                face_idx = 0;
+                sc_visualizer.ClearRollCallWindow();
+            }
+
             auto started = std::chrono::high_resolution_clock::now();
 
             is_last_frame = !cap.GrabNext();
@@ -1093,25 +1122,26 @@ int main(int argc, char* argv[]) {
 
                 work_time_ms += elapsed_ms;
 
-                if(!(work_num_frames%10))
-                    sc_visualizer.ClearRollCallWindow();
-
                 std::map<int, int> frame_face_obj_id_to_action;
-                int facce_idx = 0;
                 for (size_t j = 0; j < tracked_faces.size(); j++) {
                     const auto& face = tracked_faces[j];
-                    std::string label_to_draw;
+                    std::string name, label_to_draw;
                     if (face.label != EmbeddingsGallery::unknown_id) {
-                        label_to_draw += face_gallery.GetLabelByID(face.label);
+                        name = face_gallery.GetLabelByID(face.label);//if(name=="orange1") std::cout<<"O:"<<face.label<<std::endl;
+                        name = name.substr(0,name.length()-1);
+                        label_to_draw += name;
                         label_to_draw += ", ";
-
+                        
                         Face::Ptr face_ptr = matchFace(face.rect, faces_info);
                         auto emotion = face_ptr->getMainEmotion();
                         label_to_draw += emotion.first;
-                        //if (emotion.first=="") std::cout<<"no emotion"<<std::endl;
                         
-                        if(!(work_num_frames%10)) {
-                            sc_visualizer.DrawFace(face.rect, facce_idx++, label_to_draw);
+                        if(attended_human.find(name) == attended_human.end()) {
+                            attended_human.insert(name);
+                            sc_visualizer.DrawFace(face.rect, face_idx++, label_to_draw, !FLAGS_out_csv.empty());
+                            if (!FLAGS_out_csv.empty()) {
+                                csv << name << emotion.first << work_num_frames << endrow;
+                            }
                         }
                     }
 
@@ -1185,6 +1215,10 @@ int main(int argc, char* argv[]) {
             logger.FinalizeFrameRecord();
         }
         sc_visualizer.Finalize();
+
+        if (!FLAGS_out_csv.empty()) {
+            csv.close();
+        }
 
         // Showing performance results
         if (FLAGS_pc) {
