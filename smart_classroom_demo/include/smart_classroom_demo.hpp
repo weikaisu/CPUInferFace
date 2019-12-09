@@ -116,6 +116,9 @@ static const char reid_gallery_path_message[] = "Optional. Path to a faces galle
 /// @brief Message for output video path
 static const char output_video_message[] = "Optional. File to write output video with visualization to.";
 
+/// @brief Message for output text path
+static const char output_text_message[] = "Optional. File to write text result to csv file.";
+
 /// @brief Message action statistics output flag
 static const char act_stat_output_message[] = "Optional. Output file name to save per-person action statistics in.";
 
@@ -308,6 +311,10 @@ DEFINE_string(fg, "", reid_gallery_path_message);
 /// It is a optional parameter
 DEFINE_string(out_v, "", output_video_message);
 
+/// @brief File to write text result to csv file.
+/// It is a optional parameter
+DEFINE_string(out_csv, "", output_text_message);
+
 /// @brief Flag to disable processed video showing<br>
 /// It is an optional parameter
 DEFINE_bool(no_show, false, no_show_processed_video);
@@ -342,11 +349,13 @@ DEFINE_double(d_ad, 1.0, same_action_time_delta_message);
 
 /// @brief Labels of student actions<br>
 /// It is an optional parameter
-DEFINE_string(student_ac, "sitting,standing,raising_hand", student_actions_message);
+//DEFINE_string(student_ac, "sitting,standing,raising_hand", student_actions_message);
+DEFINE_string(student_ac, "sit, write, hand-up, stand, turn, lie", student_actions_message);
 
 /// @brief Labels of student actions for top-k mode<br>
 /// It is an optional parameter
-DEFINE_string(top_ac, "sitting,raising_hand", top_actions_message);
+//DEFINE_string(top_ac, "sitting,raising_hand", top_actions_message);
+DEFINE_string(top_ac, "hand-up", top_actions_message);
 
 /// @brief Labels of teacher actions<br>
 /// It is an optional parameter
@@ -354,7 +363,8 @@ DEFINE_string(teacher_ac, "standing,writing,demonstrating", teacher_actions_mess
 
 /// @brief Define target action name for top-k mode <br>
 /// It is an optional parameter
-DEFINE_string(top_id, "raising_hand", target_action_name_message);
+//DEFINE_string(top_id, "raising_hand", target_action_name_message);
+DEFINE_string(top_id, "hand-up", target_action_name_message);
 
 /// @brief Define maximal number of target actions <br>
 /// It is an optional parameter
