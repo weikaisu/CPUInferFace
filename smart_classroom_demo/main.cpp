@@ -70,7 +70,8 @@ public:
             return;
         }
 
-        cv::namedWindow(main_window_name_);
+        cv::namedWindow(main_window_name_, cv::WINDOW_NORMAL);
+        cv::resizeWindow(main_window_name_, 1920, 1080);
         cv::namedWindow(roll_call_window_name_);
         CreateRollCallWindow();
         ClearRollCallWindow();
@@ -223,10 +224,10 @@ public:
         }
     }
 
-    void DrawFPS(const float fps, const cv::Scalar& color) {
+    void DrawFPS(int w, int h, const float fps, const cv::Scalar& color) {
         if (enabled_ && !writer_.isOpened()) {
             cv::putText(frame_,
-                        std::to_string(static_cast<int>(fps)) + " fps",
+                        std::to_string(static_cast<int>(fps)) + " fps @" + std::to_string(w) + "x" + std::to_string(h),
                         cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 2,
                         color, 2, cv::LINE_AA);
         }
@@ -894,7 +895,7 @@ int main(int argc, char* argv[]) {
                     wait_time_ms += elapsed_ms;
                     ++wait_num_frames;
 
-                    sc_visualizer.DrawFPS(1e3f / (wait_time_ms / static_cast<float>(wait_num_frames) + 1e-6f),
+                    sc_visualizer.DrawFPS(cam_w, cam_h, 1e3f / (wait_time_ms / static_cast<float>(wait_num_frames) + 1e-6f),
                                           green_color);
                 } else {
                     if (key == SPACE_KEY) {
@@ -943,7 +944,7 @@ int main(int argc, char* argv[]) {
                     work_time_ms += elapsed_ms;
                     ++work_num_frames;
 
-                    sc_visualizer.DrawFPS(1e3f / (work_time_ms / static_cast<float>(work_num_frames) + 1e-6f), red_color);
+                    sc_visualizer.DrawFPS(cam_w, cam_h, 1e3f / (work_time_ms / static_cast<float>(work_num_frames) + 1e-6f), red_color);
 
                     for (const auto& action : tracked_actions) {
                         auto box_color = white_color;
@@ -1128,7 +1129,7 @@ int main(int argc, char* argv[]) {
                     std::string name, label_to_draw;
                     if (face.label != EmbeddingsGallery::unknown_id) {
                         name = face_gallery.GetLabelByID(face.label);//if(name=="orange1") std::cout<<"O:"<<face.label<<std::endl;
-                        name = name.substr(0,name.length()-1);
+                        //name = name.substr(0,name.length()-1);
                         label_to_draw += name;
                         label_to_draw += ", ";
                         
@@ -1199,7 +1200,7 @@ int main(int argc, char* argv[]) {
                 //if (!FLAGS_no_show) {
                 //face_visualizer->draw(sc_visualizer.GetFrame(), faces_info);
                 //}
-                sc_visualizer.DrawFPS(1e3f / (work_time_ms / static_cast<float>(work_num_frames) + 1e-6f), red_color);
+                sc_visualizer.DrawFPS(cam_w, cam_h, 1e3f / (work_time_ms / static_cast<float>(work_num_frames) + 1e-6f), red_color);
 
                 ++work_num_frames; std::cout<<work_num_frames<<std::endl;
             }
