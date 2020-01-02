@@ -68,6 +68,7 @@ if [ -e $build_dir/CMakeCache.txt ]; then
 fi
 mkdir -p $build_dir
 cd $build_dir
+
 cmake -DCMAKE_BUILD_TYPE=Release $DEMOS_PATH
 #cmake -DCMAKE_BUILD_TYPE=Debug $DEMOS_PATH
 make $NUM_THREADS
