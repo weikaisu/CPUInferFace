@@ -1,11 +1,9 @@
-# Copyright (C) 2018-2019 Intel Corporation
-# SPDX-License-Identifier: Apache-2.0
-#
+
 
 file (GLOB MAIN_SRC ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 file (GLOB MAIN_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/*.h*)
 
-macro(my_ie_add_sample)
+macro(sdk_ie_add_sample)
     set(options EXCLUDE_CPPLINT)
     set(oneValueArgs NAME)
     set(multiValueArgs SOURCES HEADERS DEPENDENCIES OPENCV_DEPENDENCIES INCLUDE_DIRECTORIES)
@@ -72,7 +70,7 @@ macro(my_ie_add_sample)
     endif()
 endmacro()
 
-my_ie_add_sample(NAME face_analytics_sdk
+sdk_ie_add_sample(NAME face_analytics_sdk
               SOURCES ${MAIN_SRC}
               HEADERS ${MAIN_HEADERS}
               OPENCV_DEPENDENCIES highgui)
