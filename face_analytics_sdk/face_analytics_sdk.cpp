@@ -32,19 +32,23 @@ using namespace InferenceEngine;
 struct FaceAnalyticsHandle
 {
     Core ie;
-    FaceDetection fd_hdl;
-    EmotionsDetection fe_hdl;
+    FaceDetection fd_hnd;
+    EmotionsDetection fe_hnd;
 
     FaceAnalyticsHandle()
-        : fd_hdl(FLAGS_m, FLAGS_d, 1, false, FLAGS_async, FLAGS_t, false, static_cast<float>(FLAGS_bb_enlarge_coef), static_cast<float>(FLAGS_dx_coef), static_cast<float>(FLAGS_dy_coef))
-        , fe_hdl(FLAGS_m_em, FLAGS_d_em, FLAGS_n_em, FLAGS_dyn_em, FLAGS_async, FLAGS_r)
+        : fd_hnd(FLAGS_m, FLAGS_d, 1, false, FLAGS_async, FLAGS_t, false, static_cast<float>(FLAGS_bb_enlarge_coef), static_cast<float>(FLAGS_dx_coef), static_cast<float>(FLAGS_dy_coef))
+        , fe_hnd(FLAGS_m_em, FLAGS_d_em, FLAGS_n_em, FLAGS_dyn_em, FLAGS_async, FLAGS_r)
         {
     };
 };
 
-void* face_analytics_open(void)
+HANDLE face_analytics_open(void)
 {
     std::cout << "face_analytics_open +"<< std::endl;
+
+    // if function is disable, set null to model path, ex FLAGS_m_em
+
+    // check license
 
     FaceAnalyticsHandle* sdk_handle = new FaceAnalyticsHandle();
 
@@ -54,8 +58,8 @@ void* face_analytics_open(void)
         std::cout << sdk_handle->ie.GetVersions(deviceName) << std::endl;
         sdk_handle->ie.AddExtension(std::make_shared<Extensions::Cpu::CpuExtensions>(), "CPU");
 
-        Load(sdk_handle->fd_hdl).into(sdk_handle->ie, FLAGS_d, false);
-        Load(sdk_handle->fe_hdl).into(sdk_handle->ie, FLAGS_d_em, FLAGS_dyn_em);
+        Load(sdk_handle->fd_hnd).into(sdk_handle->ie, FLAGS_d, false);
+        Load(sdk_handle->fe_hnd).into(sdk_handle->ie, FLAGS_d_em, FLAGS_dyn_em);
     }
     catch (const std::exception& error) {
         slog::err << error.what() << slog::endl;

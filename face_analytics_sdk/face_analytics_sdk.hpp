@@ -4,6 +4,8 @@
 # pragma once
 #include <iostream>
 
+typedef void* HANDLE;
+
 struct FaceAnalyticsResult {
     float x;
     float y;
@@ -12,9 +14,9 @@ struct FaceAnalyticsResult {
     std::string emotion;
 };
 
-void* face_analytics_open(void);
-int   face_analytics_submit(void* handle);
-int   face_analytics_infer(void* handle);
-int   face_analytics_wait(void* handle);
-int   face_analytics_get_result(void* handle);
-int   face_analytics_close(void* handle);
+HANDLE face_analytics_open(void);
+int    face_analytics_submit(HANDLE hnd, void* image);
+int    face_analytics_infer(HANDLE hnd);
+int    face_analytics_wait(HANDLE hnd);
+int    face_analytics_get_result(HANDLE hnd);
+int    face_analytics_close(HANDLE hnd);
