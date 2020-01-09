@@ -15,7 +15,7 @@ struct FaceAnalyticsResult {
 };
 
 HANDLE face_analytics_open(void);
-int    face_analytics_submit(HANDLE hnd, void* image);
+int    face_analytics_submit(HANDLE hnd, void* image, int image_w, int image_h);
 int    face_analytics_infer(HANDLE hnd);
 int    face_analytics_wait(HANDLE hnd);
 int    face_analytics_get_result(HANDLE hnd);
